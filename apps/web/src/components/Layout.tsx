@@ -52,7 +52,10 @@ export function Layout() {
   const SidebarContent = (
     <>
       <div className="h-14 flex items-center justify-between px-4 sm:px-6 font-bold text-brand">
-        <span>{t('app.name')}</span>
+        <div className="flex items-center gap-2">
+          <img src="/logo.svg" alt="" className="w-8 h-8 rounded" />
+          <span>{t('app.name')}</span>
+        </div>
         {/* Close button only on mobile */}
         <button className="lg:hidden p-1 -mr-1 text-foreground-muted" onClick={() => setDrawerOpen(false)} aria-label={t('common.close')}>
           <X size={20} />
@@ -129,6 +132,7 @@ export function Layout() {
           <button className="p-1 -ml-1 text-foreground" onClick={() => setDrawerOpen(true)} aria-label={t('common.menu')}>
             <Menu size={22} />
           </button>
+          <img src="/logo.svg" alt="" className="w-7 h-7 rounded" />
           <span className="font-bold text-brand">{t('app.name')}</span>
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-surface min-w-0">
