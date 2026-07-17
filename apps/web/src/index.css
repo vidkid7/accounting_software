@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Noto Sans Devanagari', system-ui, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+  /* Prevent horizontal scroll on small screens */
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Devanagari text uses a dedicated, properly hinted font */
+.font-deva,
+[lang='ne'] {
+  font-family: 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif;
+}
+
+/* Tabular numbers for financial columns */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: 'Roboto Mono', ui-monospace, monospace;
+}
+
+/* Larger, finger-friendly tap targets on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a,
+  select,
+  input[type='submit'] {
+    touch-action: manipulation;
+  }
+}
+
+/* Better focus visibility for keyboard users */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}

@@ -1,0 +1,659 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  ACCOUNTANT
+  SALES_STAFF
+  STORE_STAFF
+  AUDITOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+}
+
+enum ValuationMethod {
+  FIFO
+  LIFO
+  WEIGHTED_AVG
+}
+
+enum TxType {
+  SALE_OUT
+  PURCHASE_IN
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUST
+  RETURN_IN
+  RETURN_OUT
+}
+
+enum InvoiceStatus {
+  DRAFT
+  CONFIRMED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum PaymentMode {
+  CASH
+  BANK
+  CARD
+  UPI
+  CHEQUE
+  ONLINE
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum RecurrenceStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ReconciliationStatus {
+  UNRECONCILED
+  MATCHED
+  DISCREPANCY
+}
+
+enum StockTakeStatus {
+  DRAFT
+  COMPLETED
+}
+
+// ---------- Phase 3 ----------
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  REDUCING_BALANCE
+}
+
+enum AssetStatus {
+  ACTIVE
+  DISPOSED
+  FULLY_DEPRECIATED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
+  PAYPAL
+  MANUAL
+}
+
+enum EInvoiceStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  ACKNOWLEDGED
+  FAILED
+}
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  password        String
+  name            String
+  role            Role       @default(SALES_STAFF)
+  status          UserStatus @default(ACTIVE)
+  twoFactorSecret String?
+  twoFactorEnabled Boolean   @default(false)
+  companyId       String
+  company         Company    @relation(fields: [companyId], references: [id])
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([companyId])
+}
+
+model Company {
+  id               String      @id @default(uuid())
+  name             String
+  logoUrl          String?
+  address          String
+  taxId            String
+  fiscalYearStart  DateTime
+  baseCurrency     String      @default("USD")
+  users            User[]
+  products         Product[]
+  warehouses       Warehouse[]
+  customers        Customer[]
+  vendors          Vendor[]
+  invoices         Invoice[]
+  purchaseBills    PurchaseBill[]
+  accounts         Account[]
+  journalEntries   JournalEntry[]
+  taxConfigs       TaxConfig[]
+  stockBatches     StockBatch[]
+  stockTakes       StockTake[]
+  notifications    Notification[]
+  bankAccounts     BankAccount[]
+  bankTransactions BankTransaction[]
+  expenses         Expense[]
+  recurringTemplates RecurringTemplate[]
+  branches         Branch[]
+  fxRates          FxRate[]
+  fixedAssets      FixedAsset[]
+  payments         Payment[]
+  bankFeeds        BankFeed[]
+  depreciationEntries DepreciationEntry[]
+  createdAt        DateTime    @default(now())
+}
+
+model Product {
+  id           String          @id @default(uuid())
+  sku          String          @unique
+  barcode      String?
+  name         String
+  category     String
+  brand        String?
+  unit         String
+  taxCode      String
+  reorderLevel Int             @default(0)
+  costPrice    Decimal         @default(0)
+  salePrice    Decimal         @default(0)
+  valuation    ValuationMethod @default(WEIGHTED_AVG)
+  companyId    String
+  company      Company         @relation(fields: [companyId], references: [id])
+  stockLedger  StockLedger[]
+  batches      StockBatch[]
+  stockTakes   StockTakeLine[]
+  lineItems    InvoiceLineItem[]
+  createdAt    DateTime        @default(now())
+
+  @@index([companyId])
+}
+
+model Warehouse {
+  id        String       @id @default(uuid())
+  name      String
+  location  String?
+  companyId String
+  company   Company      @relation(fields: [companyId], references: [id])
+  stockLedger StockLedger[]
+  batches   StockBatch[]
+
+  @@index([companyId])
+}
+
+model StockLedger {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  quantity    Decimal  // +in / -out
+  type        TxType
+  reference   String   // invoice/bill id
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+model Customer {
+  id             String   @id @default(uuid())
+  name           String
+  email          String?
+  phone          String?
+  taxId          String?
+  creditTerms    Int      @default(0)
+  openingBalance Decimal  @default(0)
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id])
+  invoices       Invoice[]
+  recurringTemplates RecurringTemplate[]
+  payments        Payment[]
+
+  @@index([companyId])
+}
+
+model Vendor {
+  id             String   @id @default(uuid())
+  name           String
+  email          String?
+  phone          String?
+  taxId          String?
+  creditTerms    Int      @default(0)
+  openingBalance Decimal  @default(0)
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id])
+  purchaseBills  PurchaseBill[]
+
+  @@index([companyId])
+}
+
+model Invoice {
+  id          String         @id @default(uuid())
+  number      String         @unique
+  customerId  String
+  customer    Customer       @relation(fields: [customerId], references: [id])
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id])
+  status      InvoiceStatus  @default(DRAFT)
+  subtotal    Decimal        @default(0)
+  tax         Decimal        @default(0)
+  discount    Decimal        @default(0)
+  total       Decimal        @default(0)
+  issuedAt    DateTime       @default(now())
+  dueDate     DateTime?
+  lineItems   InvoiceLineItem[]
+  journalEntry JournalEntry?
+  branchId     String?
+  branch       Branch?        @relation(fields: [branchId], references: [id])
+  currency     String         @default("USD")
+  baseCurrencyTotal Decimal    @default(0) // invoice total converted to company base currency
+  eInvoiceStatus EInvoiceStatus @default(NOT_SUBMITTED)
+  eInvoiceAck    String?
+payments      Payment[]
+
+  
+  @@index([companyId])
+  @@index([customerId])
+  @@index([branchId])
+}
+
+model InvoiceLineItem {
+  id         String   @id @default(uuid())
+  invoiceId  String
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Decimal
+  rate       Decimal
+  discount   Decimal  @default(0)
+  taxRate    Decimal  @default(0)
+  amount     Decimal
+}
+
+model PurchaseBill {
+  id          String         @id @default(uuid())
+  number      String         @unique
+  vendorId    String
+  vendor      Vendor         @relation(fields: [vendorId], references: [id])
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id])
+  status      InvoiceStatus  @default(CONFIRMED)
+  subtotal    Decimal        @default(0)
+  tax         Decimal        @default(0)
+  total       Decimal        @default(0)
+  receivedAt  DateTime       @default(now())
+  journalEntry JournalEntry?
+
+  @@index([companyId])
+  @@index([vendorId])
+}
+
+model Account {
+  id        String      @id @default(uuid())
+  code      String
+  name      String
+  type      AccountType
+  companyId String
+  company   Company     @relation(fields: [companyId], references: [id])
+  journalLines JournalLine[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model JournalEntry {
+  id          String        @id @default(uuid())
+  date        DateTime      @default(now())
+  reference   String
+  description String?
+  isPosted    Boolean       @default(true)
+  companyId   String
+  company     Company       @relation(fields: [companyId], references: [id])
+  lines       JournalLine[]
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoiceId   String?       @unique
+  purchaseBill PurchaseBill? @relation(fields: [purchaseBillId], references: [id])
+  purchaseBillId String?    @unique
+
+  @@index([companyId])
+}
+
+model JournalLine {
+  id            String        @id @default(uuid())
+  journalEntryId String
+  journalEntry  JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account       @relation(fields: [accountId], references: [id])
+  debit         Decimal       @default(0)
+  credit        Decimal       @default(0)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model TaxConfig {
+  id         String  @id @default(uuid())
+  country    String
+  name       String  // e.g. CGST, SGST, IGST, VAT
+  rate       Decimal
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+}
+
+// ---------- Phase 2: Inventory advanced (batch / expiry) ----------
+model StockBatch {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  warehouseId String
+  warehouse  Warehouse @relation(fields: [warehouseId], references: [id])
+  batchNo    String
+  quantity   Decimal  // remaining in this batch
+  costPrice  Decimal  @default(0)
+  expiryDate DateTime?
+  receivedAt DateTime @default(now())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([companyId])
+}
+
+// Stock-take (physical count) sessions and line results
+model StockTake {
+  id         String         @id @default(uuid())
+  reference  String         @unique
+  status     StockTakeStatus @default(DRAFT)
+  companyId  String
+  company    Company        @relation(fields: [companyId], references: [id])
+  createdBy  String?
+  createdAt  DateTime       @default(now())
+  completedAt DateTime?
+  lines      StockTakeLine[]
+}
+
+model StockTakeLine {
+  id           String   @id @default(uuid())
+  stockTakeId  String
+  stockTake    StockTake @relation(fields: [stockTakeId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  warehouseId  String
+  systemQty    Decimal  @default(0)
+  countedQty   Decimal  @default(0)
+}
+
+// ---------- Phase 2: Notifications ----------
+model Notification {
+  id        String             @id @default(uuid())
+  companyId String
+  company   Company            @relation(fields: [companyId], references: [id])
+  userId    String?            // target user (in-app); null = company-wide
+  channel   NotificationChannel
+  status    NotificationStatus @default(PENDING)
+  type      String             // e.g. LOW_STOCK, RECURRING_GENERATED
+  title     String
+  body      String
+  meta      Json?
+  createdAt DateTime           @default(now())
+  readAt    DateTime?
+
+  @@index([companyId])
+  @@index([userId])
+}
+
+// ---------- Phase 2: Accounting bank ----------
+model BankAccount {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  name        String
+  accountNo   String?
+  bankName    String?
+  currency    String   @default("USD")
+  feeds       BankFeed[]
+  glAccountId String?  // links to Account (asset) for reconciliation
+  transactions BankTransaction[]
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model BankTransaction {
+  id            String              @id @default(uuid())
+  bankAccountId String
+  bankAccount   BankAccount         @relation(fields: [bankAccountId], references: [id])
+  companyId     String
+  company       Company             @relation(fields: [companyId], references: [id])
+  date          DateTime            @default(now())
+  description   String
+  amount        Decimal             // signed: + credit, - debit
+  reference     String?
+  status        ReconciliationStatus @default(UNRECONCILED)
+  journalEntryId String?
+  // Matched against a system JournalEntry for reconciliation
+  matchedEntryId String?
+
+  @@index([bankAccountId])
+  @@index([companyId])
+}
+
+// Phase 2: Expenses (FR5.8)
+model Expense {
+  id            String   @id @default(uuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  category      String
+  description   String
+  amount        Decimal
+  date          DateTime @default(now())
+  paymentMode   PaymentMode @default(CASH)
+  vendorId      String?
+  journalEntryId String?
+  createdAt     DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// ---------- Phase 2: Sales recurring billing ----------
+model RecurringTemplate {
+  id          String             @id @default(uuid())
+  companyId   String
+  company     Company            @relation(fields: [companyId], references: [id])
+  customerId  String
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  name        String
+  frequency   RecurrenceFrequency
+  interval    Int                @default(1)
+  nextRunDate DateTime
+  endDate     DateTime?
+  status      RecurrenceStatus   @default(ACTIVE)
+  items       Json               // array of line items
+  notes       String?
+  lastGeneratedInvoiceId String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([companyId])
+}
+
+// ================= Phase 3: Scale, Channels & Integrations =================
+
+// Multi-branch / multi-location consolidation (FR5.10)
+model Branch {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  name        String
+  code        String
+  address     String?
+  isDefault   Boolean  @default(false)
+  invoices    Invoice[]
+  fixedAssets  FixedAsset[]
+  createdAt   DateTime @default(now())
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+// FX rates for multi-currency accounting (FR5.10)
+model FxRate {
+  id         String   @id @default(uuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  currency   String   // quote currency (base is Company.baseCurrency)
+  rate       Decimal  // 1 unit of currency = rate units of baseCurrency
+  effectiveDate DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([companyId, currency, effectiveDate])
+  @@index([companyId])
+}
+
+// Fixed asset register (FR5.9)
+model FixedAsset {
+  id             String             @id @default(uuid())
+  companyId      String
+  company        Company            @relation(fields: [companyId], references: [id])
+  code           String
+  name           String
+  category       String?
+  purchaseDate   DateTime
+  purchaseCost   Decimal
+  salvageValue   Decimal           @default(0)
+  usefulLife     Int               // months
+  method         DepreciationMethod @default(STRAIGHT_LINE)
+  branchId       String?
+  branch         Branch?            @relation(fields: [branchId], references: [id])
+  glAssetAccountId    String?     // Asset (asset) account
+  glDepreciationAccountId String? // Accumulated depreciation (contra-asset) account
+  glExpenseAccountId    String?   // Depreciation expense account
+  status         AssetStatus        @default(ACTIVE)
+  accumulatedDepreciation Decimal   @default(0)
+  lastDepreciationDate DateTime?
+  createdAt      DateTime           @default(now())
+  depreciationEntries DepreciationEntry[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+// Depreciation run entries
+model DepreciationEntry {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  fixedAssetId String
+  fixedAsset  FixedAsset @relation(fields: [fixedAssetId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  amount      Decimal
+  accumulated Decimal
+  journalEntryId String?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+  @@index([fixedAssetId])
+}
+
+// Customer payments (FR3.4 partial payments, POS) — links to invoices
+model Payment {
+  id           String         @id @default(uuid())
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id])
+  customerId   String?
+  customer     Customer?      @relation(fields: [customerId], references: [id])
+  invoiceId    String?       // optional: allocate to a specific invoice
+  invoice      Invoice?       @relation(fields: [invoiceId], references: [id])
+  amount       Decimal
+  currency     String         @default("USD")
+  baseAmount   Decimal        @default(0) // amount converted to base currency
+  fxRate       Decimal        @default(1)
+  paymentMode  PaymentMode    @default(CASH)
+  provider     PaymentProvider @default(MANUAL)
+  providerRef  String?       // gateway transaction id
+  status       PaymentStatus  @default(COMPLETED)
+  receivedAt   DateTime       @default(now())
+  journalEntryId String?
+  branchId     String?
+
+  @@index([companyId])
+  @@index([customerId])
+  @@index([invoiceId])
+}
+
+// Bank feed import (FR8.2) — raw statement rows awaiting reconciliation
+model BankFeed {
+  id            String              @id @default(uuid())
+  companyId     String
+  company       Company             @relation(fields: [companyId], references: [id])
+  bankAccountId String
+  bankAccount   BankAccount         @relation(fields: [bankAccountId], references: [id])
+  date          DateTime
+  description   String
+  amount        Decimal             // signed: + credit, - debit (per bank statement)
+  currency      String             @default("USD")
+  reference     String?
+  status        ReconciliationStatus @default(UNRECONCILED)
+  matchedEntryId String?
+  createdAt     DateTime            @default(now())
+
+  @@index([companyId])
+  @@index([bankAccountId])
+}

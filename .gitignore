@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+.turbo/
+
+# Env (NEVER commit real secrets)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Thumbs.db
+
+# Prisma
+apps/api/prisma/migrations/dev.db*
+*.db
+*.db-journal
+
+# Prisma generated client (regenerated from schema)
+**/node_modules/.prisma/
+
+# Compiled lib / prisma seed artifacts (source is .ts, regenerated on build)
+libs/**/*.js
+libs/**/*.js.map
+libs/**/*.d.ts
+apps/api/prisma/seed.js
+apps/api/prisma/seed.js.map
+apps/api/prisma/seed.d.ts
+
+# Coverage / test output
+coverage/
+.nyc_output/
+
+# Temp
+tmp/
+.cache/
+*.tmp
+
+# Local override files
+*.local
+
+# Docker volumes
+docker-volume/
+postgres-data/

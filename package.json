@@ -1,0 +1,25 @@
+{
+  "name": "accounting-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web-Based Billing, Inventory & Accounting Management System",
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "libs/shared-types"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:api": "npm run start:dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "prisma:migrate": "npm run migrate --workspace=apps/api",
+    "prisma:generate": "npm run prisma:generate --workspace=apps/api",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
